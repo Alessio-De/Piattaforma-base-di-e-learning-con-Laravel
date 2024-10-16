@@ -1,0 +1,170 @@
+// Struttura delle cartelle del progetto
+app/
+    Http/
+        Controllers/
+            CourseController.php
+            LessonController.php
+            UserController.php
+    Models/
+        Course.php
+        Lesson.php
+        User.php
+database/
+    migrations/
+        2024_10_16_000000_create_courses_table.php
+        2024_10_16_000001_create_lessons_table.php
+routes/
+    web.php
+
+// app/Models/Course.php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Course extends Model
+{
+    protected $fillable = ['title', 'description', 'instructor_id'];
+
+    // Relazione con le lezioni
+    public function lessons()
+    {
+        return $this->hasMany(Lesson::class);
+    }
+
+    // Relazione con l'istruttore (User)
+    public function instructor()
+    {
+        return $this->belongsTo(User::class, 'instructor_id');
+    }
+}
+
+// app/Models/Lesson.php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Lesson extends Model
+{
+    protected $fillable = ['title', 'content', 'course_id'];
+
+    // Relazione con il corso
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
+    }
+}
+
+// app/Http/Controllers/CourseController.php
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Course;
+use Illuminate\Http\Request;
+
+class CourseController extends Controller
+{
+    // Mostra tutti i corsi
+    public function index()
+    {
+        $courses = Course::all();
+        return view('courses.index', compact('courses'));
+    }
+
+    // Mostra un singolo corso
+    public function show(Course $course)
+    {
+        return view('courses.show', compact('course'));
+    }
+
+    // Crea un nuovo corso (form)
+    public function create()
+    {
+        return view('courses.create');
+    }
+
+    // Salva un nuovo corso
+    public function store(Request $request)
+    {
+        $validatedData = $request->validate([
+            'title' => 'required|max:255',
+            'description' => 'required',
+        ]);
+
+        $course = Course::create($validatedData);
+        return redirect()->route('courses.show', $course);
+    }
+}
+
+// routes/web.php
+<?php
+
+use App\Http\Controllers\CourseController;
+use App\Http\Controllers\LessonController;
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
+Route::resource('courses', CourseController::class);
+Route::resource('lessons', LessonController::class);
+
+// database/migrations/2024_10_16_000000_create_courses_table.php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+class CreateCoursesTable extends Migration
+{
+    public function up()
+    {
+        Schema::create('courses', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->text('description');
+            $table->unsignedBigInteger('instructor_id');
+            $table->timestamps();
+
+            $table->foreign('instructor_id')->references('id')->on('users');
+        });
+    }
+
+    public function down()
+    {
+        Schema::dropIfExists('courses');
+    }
+}
+
+// database/migrations/2024_10_16_000001_create_lessons_table.php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+class CreateLessonsTable extends Migration
+{
+    public function up()
+    {
+        Schema::create('lessons', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->text('content');
+            $table->unsignedBigInteger('course_id');
+            $table->timestamps();
+
+            $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');
+        });
+    }
+
+    public function down()
+    {
+        Schema::dropIfExists('lessons');
+    }
+}
